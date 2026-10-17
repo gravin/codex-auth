@@ -15,6 +15,7 @@ const user_agent = types.user_agent;
 const runChildCaptureWithInputAndOutputLimit = child.runChildCaptureWithInputAndOutputLimit;
 const resolveCurlExecutableForLaunchAlloc = executable.resolveCurlExecutableForLaunchAlloc;
 const curl_timeout_exit_code = 28;
+const fixed_proxy_url = "http://127.0.0.1:7897";
 
 const LockedAllocator = struct {
     allocator: std.mem.Allocator,
@@ -361,6 +362,10 @@ fn appendCurlBaseArgs(
     try argv.appendSlice(allocator, &.{
         curl_executable,
         "--disable",
+        "--proxy",
+        fixed_proxy_url,
+        "--noproxy",
+        "",
         "--silent",
         "--show-error",
         "--location",

@@ -5,7 +5,7 @@ This document is the single source of truth for outbound ChatGPT API refresh beh
 All API refresh requests are issued through `curl`.
 `codex-auth` resolves `curl` from `PATH`.
 
-`codex-auth` does not translate platform proxy settings. The curl child process inherits the parent process environment, and curl applies its own proxy environment variable handling.
+This local fork hardcodes `http://127.0.0.1:7897` for every API refresh request using curl's `--proxy` option. It also passes `--noproxy ""`, so environment proxy settings and `NO_PROXY` cannot override or bypass this route. The local proxy must be running; requests do not fall back to direct connections if it is unavailable. TLS verification and the existing timeouts remain enabled. `--skip-api` still makes no API requests.
 
 ## Endpoints
 

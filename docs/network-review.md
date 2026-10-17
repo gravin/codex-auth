@@ -1,12 +1,12 @@
 # Network review and proposed improvements
 
-This review describes the current source and recommended changes. Network behavior is not changed by the local build/install helper.
+This review describes the current local fork and recommended changes. At the user's request, the API transport now hardcodes `http://127.0.0.1:7897`; the local build/install helper itself does not configure runtime routing.
 
 ## Current behavior
 
 - `src/api/http_executable.zig` resolves an external `curl` through PATH.
 - `src/api/http_curl.zig` launches a separate curl process per HTTP request. It sends the bearer token and account header through curl configuration on stdin, avoiding credential-bearing command-line arguments.
-- The curl command begins with `--disable`, which suppresses the default curl configuration file. It still inherits environment variables.
+- The curl command begins with `--disable`, which suppresses the default curl configuration file. It passes `--proxy http://127.0.0.1:7897 --noproxy ""`, overriding environment proxy selection and bypass rules for API requests.
 - `src/api/http_types.zig` fixes the transfer limit at 5 seconds and the child-process capture limit at 7 seconds. The transfer limit covers the entire request, including connection establishment and TLS.
 - There is no explicit connection-timeout setting or automatic retry in this request path.
 - `src/workflows/usage.zig` allows five foreground usage requests concurrently. Token/account pairs are already deduplicated by `src/api/usage.zig`; do not add redundant deduplication or assume one request per email, since different workspaces have different usage.
@@ -39,9 +39,9 @@ Keeping external curl initially is reasonable: it preserves the working TLS/prox
 
 ## Proxy behavior and recommendation
 
-Today the program does not read Windows Internet Settings or PAC files. It inherits curl's environment-based proxy selection. `--disable` also means placing proxy settings in `_curlrc` or `.curlrc` will not fix this program. A TUN interface can separately intercept traffic at the network layer, even when no proxy environment variables are present.
+This local fork uses the fixed HTTP proxy `http://127.0.0.1:7897` for all API requests, including usage and account metadata. It ignores environment proxy selection and `NO_PROXY` bypasses and does not read Windows Internet Settings or PAC files. The proxy must be running; failure does not trigger a direct-connection fallback. TLS verification and the 5-second request limit are unchanged. `--disable` also suppresses `_curlrc` and `.curlrc`. A TUN interface can separately affect system routing.
 
-For the existing binary, explicit process environment is the least ambiguous choice:
+For an upstream binary that still inherits curl's proxy environment, explicit process settings can be used instead. These settings do not override this fork's hardcoded route:
 
 ```powershell
 $env:HTTPS_PROXY = 'http://127.0.0.1:7897'
@@ -50,9 +50,9 @@ $env:NO_PROXY = 'localhost,127.0.0.1'
 codex-auth list --json
 ```
 
-Use the actual listening proxy port; `7897` is machine-specific and should not become a built-in default. `HTTPS_PROXY` can correctly point to an `http://` proxy because HTTPS target connections use CONNECT. For SOCKS with proxy-side DNS, curl supports `socks5h://...`.
+The hardcoded port `7897` is specific to this machine. Change `fixed_proxy_url` in `src/api/http_curl.zig` and rebuild to use another proxy. `HTTPS_PROXY` can correctly point to an `http://` proxy because HTTPS target connections use CONNECT. For SOCKS with proxy-side DNS, curl supports `socks5h://...`.
 
-For a future implementation, expose explicit modes:
+For a future configurable implementation, consider explicit modes (these modes are not currently implemented):
 
 - `inherit` (default): preserve curl's environment selection; transparent TUN routing remains the operating system's responsibility.
 - `custom`: use one validated proxy URL supplied by a CLI option, a dedicated environment variable or saved configuration. Define precedence explicitly, for example CLI > `CODEX_AUTH_PROXY` > saved custom URL. Decide and document whether standard `NO_PROXY` bypasses remain active.
@@ -61,7 +61,7 @@ For a future implementation, expose explicit modes:
 
 Do not silently change routes after an explicit proxy fails. Report the selected mode/source and redacted destination in a doctor/debug command; this is more predictable than probing common localhost ports and silently sending credentials through whichever service answers. Validate supported schemes and report an unavailable custom proxy clearly.
 
-Setting proxy variables only inside `使用.bat` would affect installation, not future CLI invocations launched by elevator, the custody GUI or a new terminal. To cover all those callers, use inherited persistent environment (restart parent apps afterwards) or implement runtime configuration inside codex-auth itself.
+Setting proxy variables only inside `使用.bat` would affect installation, not future CLI invocations launched by elevator, the custody GUI or a new terminal. The hardcoded runtime setting in this fork covers all those callers once they use the rebuilt and reinstalled executable.
 
 ## References
 

@@ -43,4 +43,4 @@ $env:HTTP_PROXY = 'http://127.0.0.1:7897'
 & '.\使用.bat'
 ```
 
-These variables affect that PowerShell process and its children. Double-clicking the batch file in Explorer does not inherit variables set in a separate PowerShell window. Setting proxies during installation does not persist them in the installed CLI. See [network review](network-review.md) for current runtime behavior and suggested improvements.
+These variables affect that PowerShell process and its children. Double-clicking the batch file in Explorer does not inherit variables set in a separate PowerShell window. Independently of installer settings, this fork's compiled CLI hardcodes `http://127.0.0.1:7897` for API requests and disables environment bypass rules. No environment setup is needed for later CLI invocations, but the local proxy must be running. Rebuild and reinstall after changing the address in `src/api/http_curl.zig`. See [network review](network-review.md) for current runtime behavior and suggested improvements.
