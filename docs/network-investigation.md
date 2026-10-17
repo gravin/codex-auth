@@ -1,5 +1,7 @@
 # Timeout investigation (2026-10-17)
 
+Follow-up: [list stability investigation](list-stability-investigation.md) separates transport failures from a reproduced cross-process Windows registry-save collision.
+
 ## Reproduction
 
 The Windows machine uses curl 8.21.0 with Schannel and the local HTTP proxy at `127.0.0.1:7897`. Six distinct stored token/account pairs were tested against the usage endpoint with the same user agent and headers as the CLI. Credentials were supplied through stdin; only anonymous account labels, transport timings and status codes were recorded. No account was switched and no token was refreshed.
