@@ -1,11 +1,11 @@
 const std = @import("std");
 const version = @import("../version.zig");
 
-pub const request_timeout_secs: []const u8 = "5";
-pub const request_timeout_ms: []const u8 = "5000";
-pub const request_timeout_ms_value: u64 = 5000;
-pub const child_process_timeout_ms: []const u8 = "7000";
-pub const child_process_timeout_ms_value: u64 = 7000;
+pub const request_timeout_secs: []const u8 = "20";
+pub const request_timeout_ms: []const u8 = "20000";
+pub const request_timeout_ms_value: u64 = 20000;
+pub const child_process_timeout_ms: []const u8 = "22000";
+pub const child_process_timeout_ms_value: u64 = 22000;
 pub const user_agent: []const u8 = "codex-auth/" ++ version.app_version;
 pub const curl_requirement_hint = "curl is required for API-backed refresh. Install curl or use --skip-api.";
 

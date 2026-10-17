@@ -7,7 +7,7 @@ This review describes the current local fork and recommended changes. At the use
 - `src/api/http_executable.zig` resolves an external `curl` through PATH.
 - `src/api/http_curl.zig` launches a separate curl process per HTTP request. It sends the bearer token and account header through curl configuration on stdin, avoiding credential-bearing command-line arguments.
 - The curl command begins with `--disable`, which suppresses the default curl configuration file. It passes `--proxy http://127.0.0.1:7897 --noproxy ""`, overriding environment proxy selection and bypass rules for API requests.
-- `src/api/http_types.zig` fixes the transfer limit at 5 seconds and the child-process capture limit at 7 seconds. The transfer limit covers the entire request, including connection establishment and TLS.
+- `src/api/http_types.zig` fixes the transfer limit at 20 seconds and the child-process capture limit at 22 seconds. These were raised from 5 and 7 seconds after measured TLS delays exceeded the old transfer budget; see [timeout investigation](network-investigation.md). The transfer limit covers the entire request, including connection establishment and TLS.
 - There is no explicit connection-timeout setting or automatic retry in this request path.
 - `src/workflows/usage.zig` allows five foreground usage requests concurrently. Token/account pairs are already deduplicated by `src/api/usage.zig`; do not add redundant deduplication or assume one request per email, since different workspaces have different usage.
 - A nonzero curl exit other than 28 becomes `RequestFailed`; exit 28 or the process watchdog becomes `TimedOut`. The concrete transport error and captured stderr are not returned in structured command output.
@@ -21,7 +21,7 @@ This review describes the current local fork and recommended changes. At the use
 
 Use a single options object for total timeout, connection timeout, retry count and process watchdog. A practical initial profile is a 20-second transfer budget, a connection limit no greater than that budget, one transient-error retry and concurrency 3, all configurable. These are starting values to benchmark, not universal network guarantees.
 
-Derive the process watchdog from the complete attempt and backoff budget. Changing `--max-time` while leaving the watchdog at 7 seconds would still kill the request prematurely. Revisit batch watchdog calculations and external callers such as elevator's 120-second overall command timeout together. An overall deadline should prevent many accounts and retries from turning one foreground command into an unbounded wait.
+Derive the process watchdog from the complete attempt and backoff budget. The current 20-second request limit has a matching 22-second watchdog; changing only `--max-time` could otherwise leave a shorter watchdog that kills the request prematurely. Revisit batch watchdog calculations and external callers such as elevator's 120-second overall command timeout together. An overall deadline should prevent many accounts and retries from turning one foreground command into an unbounded wait.
 
 Preserve curl exit code, a small redacted transport-error string and timing fields such as DNS/connect/TLS/total duration. Distinguish DNS failure, refused connection, TLS verification failure, timeout and HTTP authentication/authorization responses. Keep stdout as one JSON object; human diagnostics belong on stderr or in an explicitly versioned structured schema. Preserve existing schema fields so elevator's parser continues to work.
 
@@ -39,7 +39,7 @@ Keeping external curl initially is reasonable: it preserves the working TLS/prox
 
 ## Proxy behavior and recommendation
 
-This local fork uses the fixed HTTP proxy `http://127.0.0.1:7897` for all API requests, including usage and account metadata. It ignores environment proxy selection and `NO_PROXY` bypasses and does not read Windows Internet Settings or PAC files. The proxy must be running; failure does not trigger a direct-connection fallback. TLS verification and the 5-second request limit are unchanged. `--disable` also suppresses `_curlrc` and `.curlrc`. A TUN interface can separately affect system routing.
+This local fork uses the fixed HTTP proxy `http://127.0.0.1:7897` for all API requests, including usage and account metadata. It ignores environment proxy selection and `NO_PROXY` bypasses and does not read Windows Internet Settings or PAC files. The proxy must be running; failure does not trigger a direct-connection fallback. TLS verification remains enabled, with a 20-second total request limit. `--disable` also suppresses `_curlrc` and `.curlrc`. A TUN interface can separately affect system routing.
 
 For an upstream binary that still inherits curl's proxy environment, explicit process settings can be used instead. These settings do not override this fork's hardcoded route:
 
