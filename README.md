@@ -18,6 +18,8 @@ You can also run it without a global install:
 npx @loongphy/codex-auth list
 ```
 
+For this fork's local Windows build, double-click `使用.bat` to build and replace the globally installed npm version. See [local development](docs/local-development.md) and [network optimization recommendations](docs/network-review.md).
+
 ## Supported Platforms
 
 `codex-auth` works with these Codex clients:
